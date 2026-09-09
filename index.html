@@ -1,0 +1,850 @@
+<title>Kotonoha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef1ec;
+    --paper-line: #cfd6c9;
+    --surface: #ffffff;
+    --ink: #202433;
+    --ink-soft: #5b6270;
+    --ink-faint: #92979f;
+    --indigo: #2c4a72;
+    --indigo-soft: #e2e9f2;
+    --vermillion: #ad3a20;
+    --vermillion-soft: #f4e0d8;
+    --border: #cdd3c8;
+    --shadow: 0 10px 30px -18px rgba(32, 36, 51, 0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14171d;
+      --paper-line: #262c34;
+      --surface: #1a1e26;
+      --ink: #e9e7df;
+      --ink-soft: #aab0bc;
+      --ink-faint: #6d7481;
+      --indigo: #93add9;
+      --indigo-soft: #202c40;
+      --vermillion: #e2896a;
+      --vermillion-soft: #3a2620;
+      --border: #333a44;
+      --shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14171d;
+    --paper-line: #262c34;
+    --surface: #1a1e26;
+    --ink: #e9e7df;
+    --ink-soft: #aab0bc;
+    --ink-faint: #6d7481;
+    --indigo: #93add9;
+    --indigo-soft: #202c40;
+    --vermillion: #e2896a;
+    --vermillion-soft: #3a2620;
+    --border: #333a44;
+    --shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  }
+  h1, h2 { font-family: "Shippori Mincho", "Hiragino Mincho ProN", serif; margin: 0; }
+
+  .app {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 20px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand-kanji { font-family: "Shippori Mincho", serif; font-size: 1.9rem; font-weight: 700; color: var(--indigo); }
+  .brand-name { font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .datenav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink); font-size: 1.1rem; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .icon-btn:hover { border-color: var(--indigo); color: var(--indigo); }
+  .date-display { position: relative; display: flex; align-items: center; }
+  .date-label {
+    font-family: "Shippori Mincho", serif; font-size: 1.15rem; font-weight: 600;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  }
+  .date-label:hover { background: var(--indigo-soft); }
+  #datePicker {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; cursor: pointer; border: none;
+  }
+  .ghost-btn {
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft);
+    border-radius: 8px; padding: 7px 12px; font-size: 0.85rem; cursor: pointer;
+    font-family: inherit;
+  }
+  .ghost-btn:hover { color: var(--indigo); border-color: var(--indigo); }
+  .history-toggle { display: none; }
+
+  .layout { display: grid; grid-template-columns: 1fr 280px; gap: 22px; align-items: start; }
+
+  .journal { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  .prompt-card {
+    background: var(--indigo-soft); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .prompt-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    font-size: 0.72rem; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--ink-soft); background: var(--surface);
+  }
+  .tag.topic { color: var(--indigo); border-color: var(--indigo); }
+  .tag.grammar { color: var(--vermillion); border-color: var(--vermillion); }
+  .prompt-text { margin: 0; font-size: 0.98rem; color: var(--ink); }
+  .prompt-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+  .text-btn {
+    border: none; background: none; color: var(--indigo); font-size: 0.82rem;
+    cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .text-btn:hover { color: var(--vermillion); }
+
+  .paper {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 22px 20px; min-height: 180px;
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+    background-size: 30px 30px;
+    background-position: -1px -1px;
+  }
+  .kana-display {
+    font-size: 1.4rem; line-height: 2.05rem; white-space: pre-wrap; word-break: break-word;
+    min-height: 2.05rem;
+  }
+  #kanaCommitted { color: var(--ink); }
+  #kanaPending {
+    color: var(--ink-faint); font-family: "IBM Plex Mono", monospace; font-size: 1.05rem;
+    border-bottom: 1px dashed var(--ink-faint);
+  }
+  .input-row { display: flex; flex-direction: column; gap: 4px; }
+  .input-label { font-size: 0.78rem; color: var(--ink-soft); display: flex; gap: 6px; align-items: baseline; }
+  .input-label .hint { color: var(--ink-faint); }
+  #romajiInput {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.95rem; color: var(--ink-soft);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; resize: vertical; min-height: 52px; width: 100%;
+  }
+  #romajiInput:focus { outline: 2px solid var(--indigo); outline-offset: 1px; }
+
+  details.help { font-size: 0.8rem; color: var(--ink-soft); }
+  details.help summary { cursor: pointer; color: var(--indigo); }
+  details.help p { margin: 6px 0 0; line-height: 1.5; }
+
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .char-count, .save-status { font-size: 0.78rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .toolbar-actions { display: flex; gap: 10px; margin-left: auto; }
+  .primary-btn {
+    background: var(--vermillion); color: #fff; border: none; border-radius: 8px;
+    padding: 9px 16px; font-size: 0.86rem; cursor: pointer; font-family: inherit;
+  }
+  .primary-btn:hover { filter: brightness(1.08); }
+  .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .review-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
+  }
+  .review-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .review-header h2 { font-size: 1.05rem; color: var(--indigo); }
+  .review-text { white-space: pre-wrap; line-height: 1.6; font-size: 0.92rem; color: var(--ink); }
+  .review-note { font-size: 0.8rem; color: var(--ink-faint); margin-top: 8px; }
+
+  .history {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; max-height: 70vh; overflow-y: auto;
+  }
+  .history h2 { font-size: 0.95rem; color: var(--ink-soft); margin-bottom: 10px; }
+  .history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .history-list li {
+    border-top: 1px solid var(--border); padding: 9px 0; cursor: pointer;
+  }
+  .history-list li:first-child { border-top: none; }
+  .history-list li:hover .h-date { color: var(--indigo); }
+  .history-list li.active .h-date { color: var(--vermillion); }
+  .h-date { font-size: 0.82rem; font-weight: 500; display: block; }
+  .h-preview { font-size: 0.8rem; color: var(--ink-faint); display: block; margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-empty { font-size: 0.82rem; color: var(--ink-faint); }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    .history-toggle { display: inline-block; }
+    .history {
+      position: fixed; top: 0; right: 0; height: 100dvh; width: min(300px, 84vw);
+      max-height: none; border-radius: 0; z-index: 20;
+      transform: translateX(100%); transition: transform 0.22s ease;
+      box-shadow: var(--shadow);
+    }
+    .history.open { transform: translateX(0); }
+  }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-kanji">言の葉</span>
+      <span class="brand-name">Kotonoha</span>
+    </div>
+    <div class="datenav">
+      <button class="icon-btn" id="prevDay" aria-label="Previous day">‹</button>
+      <div class="date-display">
+        <span class="date-label" id="dateLabel"></span>
+        <input type="date" id="datePicker" aria-label="Jump to date">
+      </div>
+      <button class="icon-btn" id="nextDay" aria-label="Next day">›</button>
+      <button class="ghost-btn" id="todayBtn">Today</button>
+    </div>
+    <button class="ghost-btn history-toggle" id="historyToggle">Entries</button>
+  </header>
+
+  <div class="layout">
+    <main class="journal">
+      <section class="prompt-card" id="promptCard" hidden>
+        <div class="prompt-tags">
+          <span class="tag topic" id="promptTopic"></span>
+          <span class="tag grammar" id="promptGrammar"></span>
+        </div>
+        <p class="prompt-text" id="promptText"></p>
+        <div class="prompt-actions">
+          <button class="text-btn" id="shufflePrompt" type="button">Shuffle prompt</button>
+          <button class="text-btn" id="dismissPrompt" type="button">Write about something else</button>
+        </div>
+      </section>
+      <button class="text-btn" id="showPromptBtn" type="button" hidden>Show a writing prompt</button>
+
+      <section class="paper" aria-label="Japanese entry preview">
+        <div class="kana-display" id="kanaDisplay">
+          <span id="kanaCommitted"></span><span id="kanaPending"></span>
+        </div>
+      </section>
+
+      <div class="input-row">
+        <label class="input-label" for="romajiInput">Romaji <span class="hint">— keep Shift held down for a whole word to get katakana (e.g. Shift+RAAMEN → ラアメン)</span></label>
+        <textarea id="romajiInput" rows="3" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="kyou wa ii tenki desu ne"></textarea>
+      </div>
+
+      <details class="help">
+        <summary>How the kana conversion works</summary>
+        <p>Type standard romaji: <code>sh</code>→し, <code>ch</code>→ち, <code>ts</code>→つ, <code>fu</code>→ふ, and combos like <code>kya</code>→きゃ. Double a consonant for small っ (<code>kk</code>→っk…). Type <code>n</code> before a consonant, or <code>nn</code>, for ん. Use <code>-</code> for a long vowel mark (ー), and <code>x</code> or <code>l</code> before a vowel/tsu/ya·yu·yo for small kana (<code>xtsu</code>→っ). Keep <strong>Shift</strong> held down for every letter of a word (so it comes out ALL CAPS) to get katakana instead of hiragana — capitalizing just the first letter will only shift that one syllable.</p>
+      </details>
+
+      <div class="toolbar">
+        <span class="char-count" id="charCount">0 characters</span>
+        <span class="save-status" id="saveStatus" aria-live="polite">Ready</span>
+        <div class="toolbar-actions">
+          <button class="ghost-btn" id="copyBtn" type="button">Copy Japanese</button>
+          <button class="primary-btn" id="reviewBtn" type="button">Ask Claude to review</button>
+        </div>
+      </div>
+
+      <section class="review-panel" id="reviewPanel" hidden>
+        <div class="review-header">
+          <h2>Claude's feedback</h2>
+          <button class="text-btn" id="stopReview" type="button" hidden>Stop</button>
+        </div>
+        <div class="review-text" id="reviewText" aria-live="polite"></div>
+        <p class="review-note" id="reviewNote" hidden></p>
+      </section>
+    </main>
+
+    <aside class="history" id="historyPanel">
+      <h2>Past entries</h2>
+      <ul class="history-list" id="historyList"></ul>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- romaji → kana engine ----------
+  var KANA_MAP = {
+    "a":"あ","i":"い","u":"う","e":"え","o":"お",
+    "ka":"か","ki":"き","ku":"く","ke":"け","ko":"こ",
+    "kya":"きゃ","kyu":"きゅ","kyo":"きょ",
+    "ga":"が","gi":"ぎ","gu":"ぐ","ge":"げ","go":"ご",
+    "gya":"ぎゃ","gyu":"ぎゅ","gyo":"ぎょ",
+    "sa":"さ","shi":"し","si":"し","su":"す","se":"せ","so":"そ",
+    "sha":"しゃ","shu":"しゅ","sho":"しょ","sya":"しゃ","syu":"しゅ","syo":"しょ","she":"しぇ",
+    "za":"ざ","ji":"じ","zi":"じ","zu":"ず","ze":"ぜ","zo":"ぞ",
+    "ja":"じゃ","ju":"じゅ","jo":"じょ","jya":"じゃ","jyu":"じゅ","jyo":"じょ",
+    "zya":"じゃ","zyu":"じゅ","zyo":"じょ","je":"じぇ",
+    "ta":"た","chi":"ち","ti":"ち","tsu":"つ","tu":"つ","te":"て","to":"と",
+    "cha":"ちゃ","chu":"ちゅ","cho":"ちょ","cya":"ちゃ","cyu":"ちゅ","cyo":"ちょ",
+    "tya":"ちゃ","tyu":"ちゅ","tyo":"ちょ","che":"ちぇ",
+    "tsa":"つぁ","tsi":"つぃ","tse":"つぇ","tso":"つぉ",
+    "da":"だ","di":"ぢ","du":"づ","de":"で","do":"ど",
+    "dya":"ぢゃ","dyu":"ぢゅ","dyo":"ぢょ","dhi":"でぃ","dwu":"どぅ",
+    "na":"な","ni":"に","nu":"ぬ","ne":"ね","no":"の",
+    "nya":"にゃ","nyu":"にゅ","nyo":"にょ",
+    "ha":"は","hi":"ひ","fu":"ふ","hu":"ふ","he":"へ","ho":"ほ",
+    "hya":"ひゃ","hyu":"ひゅ","hyo":"ひょ",
+    "fa":"ふぁ","fi":"ふぃ","fe":"ふぇ","fo":"ふぉ","thi":"てぃ","twu":"とぅ",
+    "ba":"ば","bi":"び","bu":"ぶ","be":"べ","bo":"ぼ",
+    "bya":"びゃ","byu":"びゅ","byo":"びょ",
+    "pa":"ぱ","pi":"ぴ","pu":"ぷ","pe":"ぺ","po":"ぽ",
+    "pya":"ぴゃ","pyu":"ぴゅ","pyo":"ぴょ",
+    "va":"ゔぁ","vi":"ゔぃ","vu":"ゔ","ve":"ゔぇ","vo":"ゔぉ",
+    "ma":"ま","mi":"み","mu":"む","me":"め","mo":"も",
+    "mya":"みゃ","myu":"みゅ","myo":"みょ",
+    "ya":"や","yu":"ゆ","yo":"よ",
+    "ra":"ら","ri":"り","ru":"る","re":"れ","ro":"ろ",
+    "rya":"りゃ","ryu":"りゅ","ryo":"りょ",
+    "wa":"わ","wo":"を","wi":"ゐ","we":"ゑ",
+    "xa":"ぁ","xi":"ぃ","xu":"ぅ","xe":"ぇ","xo":"ぉ",
+    "xtu":"っ","xtsu":"っ","xya":"ゃ","xyu":"ゅ","xyo":"ょ","xwa":"ゎ",
+    "la":"ぁ","li":"ぃ","lu":"ぅ","le":"ぇ","lo":"ぉ",
+    "ltu":"っ","ltsu":"っ","lya":"ゃ","lyu":"ゅ","lyo":"ょ","lwa":"ゎ",
+    ".":"。",",":"、","!":"！","?":"？"
+  };
+
+  function toKatakana(s) {
+    return s.replace(/[ぁ-ゖ]/g, function (ch) {
+      return String.fromCharCode(ch.charCodeAt(0) + 0x60);
+    });
+  }
+
+  // Converts a raw romaji string into {converted, pending}. `pending` is the
+  // trailing fragment that cannot yet be resolved (still being typed).
+  function convert(buf) {
+    var out = "";
+    var i = 0;
+    var n = buf.length;
+    while (i < n) {
+      var rem = buf.slice(i);
+      var remLower = rem.toLowerCase();
+      var matchedKana = null, matchedLen = 0;
+      for (var len = Math.min(4, rem.length); len >= 1; len--) {
+        var key = remLower.slice(0, len);
+        if (Object.prototype.hasOwnProperty.call(KANA_MAP, key)) {
+          matchedKana = KANA_MAP[key];
+          matchedLen = len;
+          break;
+        }
+      }
+      if (matchedKana !== null) {
+        var chunk = rem.slice(0, matchedLen);
+        out += /[A-Z]/.test(chunk) ? toKatakana(matchedKana) : matchedKana;
+        i += matchedLen;
+        continue;
+      }
+
+      var c0 = rem[0];
+      var c0l = c0.toLowerCase();
+
+      // sokuon: doubled consonant -> small tsu
+      if (/[a-z]/.test(c0l) && "aeiouyn".indexOf(c0l) === -1 && rem[1] && rem[1].toLowerCase() === c0l) {
+        var upperSoku = /[A-Z]/.test(c0) || /[A-Z]/.test(rem[1]);
+        out += upperSoku ? "ッ" : "っ";
+        i += 1;
+        continue;
+      }
+
+      // n handling
+      if (c0l === "n") {
+        var c1 = rem[1];
+        if (c1 === undefined) {
+          if (n - i <= 3) break;
+          out += /[A-Z]/.test(c0) ? "ン" : "ん";
+          i += 1;
+          continue;
+        }
+        var upperN = /[A-Z]/.test(c0);
+        if (c1 === "'") { out += upperN ? "ン" : "ん"; i += 2; continue; }
+        var c1l = c1.toLowerCase();
+        if (c1l === "n") { out += upperN ? "ン" : "ん"; i += 1; continue; }
+        if ("aiueoy".indexOf(c1l) !== -1) {
+          if (n - i <= 3) break;
+          out += upperN ? "ン" : "ん";
+          i += 1;
+          continue;
+        }
+        out += upperN ? "ン" : "ん";
+        i += 1;
+        continue;
+      }
+
+      // explicit chōonpu
+      if (c0 === "-") { out += "ー"; i += 1; continue; }
+
+      // letter/apostrophe still building toward a token
+      if (/[a-zA-Z']/.test(c0)) {
+        if (n - i <= 3) break;
+        out += c0; i += 1; continue;
+      }
+
+      // anything else (digits, whitespace, unmapped punctuation)
+      out += c0; i += 1;
+    }
+    return { converted: out, pending: buf.slice(i) };
+  }
+
+  function resolveFull(text) {
+    var r = convert(text);
+    if (!r.pending) return r.converted;
+    if (r.pending.toLowerCase() === "n") {
+      return r.converted + (/[A-Z]/.test(r.pending) ? "ン" : "ん");
+    }
+    return r.converted + r.pending;
+  }
+
+  // ---------- writing prompts (N5/N4) ----------
+  var PROMPTS = [
+    {en:"What did you eat for breakfast this morning?", topic:"Food", grammar:"Past tense (〜ました)"},
+    {en:"Describe today's weather.", topic:"Weather", grammar:"Present tense (〜です/〜ます)"},
+    {en:"What time did you wake up and go to bed yesterday?", topic:"Daily life", grammar:"Past tense (〜ました)"},
+    {en:"Write about a member of your family.", topic:"Family", grammar:"Adjective + noun"},
+    {en:"What do you usually do on the weekend?", topic:"Weekend", grammar:"Frequency (よく／たまに)"},
+    {en:"What is your favorite season, and why?", topic:"Seasons", grammar:"Because (〜から)"},
+    {en:"Talk about a hobby you enjoy.", topic:"Hobbies", grammar:"Present tense (〜ます)"},
+    {en:"What did you do last weekend?", topic:"Weekend", grammar:"Past tense (〜ました)"},
+    {en:"Describe your morning routine.", topic:"Daily life", grammar:"Te-form (〜て、〜て)"},
+    {en:"What food do you dislike, and why?", topic:"Food", grammar:"Negative (〜ません)"},
+    {en:"Write about a place you want to visit.", topic:"Travel", grammar:"Want to (〜たい)"},
+    {en:"What did you buy the last time you went shopping?", topic:"Shopping", grammar:"Past tense (〜ました)"},
+    {en:"Describe your best friend.", topic:"Friends", grammar:"Adjective + noun"},
+    {en:"What are you planning to do this weekend?", topic:"Future", grammar:"Intention (〜つもりです)"},
+    {en:"Talk about your favorite animal.", topic:"Animals", grammar:"Present tense (〜です)"},
+    {en:"What did you study or work on today?", topic:"School & work", grammar:"Past tense (〜ました)"},
+    {en:"Describe your house or apartment.", topic:"Home", grammar:"There is/are (〜があります)"},
+    {en:"What is something you want to try doing?", topic:"Goals", grammar:"Trying (〜てみたいです)"},
+    {en:"Write about a memory from your childhood.", topic:"Memories", grammar:"Past tense (〜でした)"},
+    {en:"Compare two foods you like.", topic:"Food", grammar:"Comparison (〜より〜のほうが)"},
+    {en:"What do you do when you are tired?", topic:"Daily life", grammar:"If (〜たら)"},
+    {en:"Talk about someone who helped you recently.", topic:"Friends", grammar:"Receiving (〜てもらいました)"},
+    {en:"What is the weather like in your favorite season?", topic:"Seasons", grammar:"Present tense (〜です)"},
+    {en:"Describe a trip you took in the past.", topic:"Travel", grammar:"Past tense (〜ました)"},
+    {en:"What can you cook?", topic:"Food", grammar:"Can/potential (〜ことができます)"},
+    {en:"What did you give someone as a present recently?", topic:"Family", grammar:"Giving (〜をあげました)"},
+    {en:"Talk about your favorite subject in school.", topic:"School & work", grammar:"Because (〜から)"},
+    {en:"What do you think about learning Japanese?", topic:"Opinions", grammar:"Opinion (〜と思います)"},
+    {en:"Describe what you wore today.", topic:"Daily life", grammar:"Past tense (〜ました)"},
+    {en:"What do you want to do after this week?", topic:"Future", grammar:"Want to (〜たいです)"},
+    {en:"Write about your favorite piece of technology.", topic:"Technology", grammar:"Present tense (〜です)"},
+    {en:"What did the weather do yesterday, and how did it change your plans?", topic:"Weather", grammar:"Te-form (〜て)"},
+    {en:"Describe a pet you have or would like to have.", topic:"Animals", grammar:"Want to (〜たいです)"},
+    {en:"What is something you cannot do yet, but want to learn?", topic:"Goals", grammar:"Negative potential (〜できません)"},
+    {en:"Talk about your neighborhood.", topic:"Home", grammar:"There is/are (〜があります)"},
+    {en:"What did you and a friend do together recently?", topic:"Friends", grammar:"Past tense (〜ました)"},
+    {en:"Describe your ideal weekend.", topic:"Weekend", grammar:"If (〜たら)"},
+    {en:"What is a food from your country that you recommend?", topic:"Food", grammar:"Recommendation (〜がいいです)"},
+    {en:"Write about something that made you happy this week.", topic:"Opinions", grammar:"Past tense (〜でした)"},
+    {en:"What do you usually do after work or school?", topic:"Daily life", grammar:"Frequency (よく／いつも)"},
+    {en:"Talk about a goal you have for this year.", topic:"Goals", grammar:"Intention (〜つもりです)"},
+    {en:"Describe a shop you like to visit.", topic:"Shopping", grammar:"Present tense (〜です)"},
+    {en:"What did you do the first time you tried something new?", topic:"Memories", grammar:"Trying (〜てみました)"},
+    {en:"Write about the last book, show, or game you enjoyed.", topic:"Hobbies", grammar:"Past tense (〜ました)"},
+    {en:"What would you do if you had a free day tomorrow?", topic:"Future", grammar:"If (〜たら)"},
+    {en:"Describe how you feel today, and why.", topic:"Opinions", grammar:"Because (〜ので)"},
+    {en:"What is a Japanese word or phrase you learned recently?", topic:"School & work", grammar:"Present tense (〜です)"},
+    {en:"Talk about the last time you traveled by train or bus.", topic:"Travel", grammar:"Past tense (〜ました)"}
+  ];
+
+  function randomPrompt(excludeText) {
+    var pool = PROMPTS;
+    if (excludeText) pool = PROMPTS.filter(function (p) { return p.en !== excludeText; });
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ---------- storage abstraction (db capability, falls back to localStorage) ----------
+  var Storage = {
+    mode: "local",
+    db: null,
+    listeners: [],
+    async init() {
+      if (typeof window.claude !== "undefined" && window.claude && window.claude.use) {
+        try {
+          var db = await window.claude.use("db");
+          if (db) { this.db = db; this.mode = "db"; }
+        } catch (e) { /* fall back to local */ }
+      }
+    },
+    docRef(dateStr) {
+      return this.db.collection("entries").doc(dateStr);
+    },
+    async getEntry(dateStr) {
+      if (this.mode === "db") {
+        var snap = await this.docRef(dateStr).get();
+        return snap.exists ? snap.data() : null;
+      }
+      var raw = localStorage.getItem("kotonoha:" + dateStr);
+      return raw ? JSON.parse(raw) : null;
+    },
+    async setEntry(dateStr, data) {
+      if (this.mode === "db") {
+        await this.docRef(dateStr).set(data);
+      } else {
+        localStorage.setItem("kotonoha:" + dateStr, JSON.stringify(data));
+      }
+    },
+    async listRecent(limit) {
+      if (this.mode === "db") {
+        var qs = await this.db.collection("entries").orderBy("date", "desc").limit(limit).get();
+        return qs.docs.map(function (d) { return d.data(); });
+      }
+      var out = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k.indexOf("kotonoha:") === 0) {
+          try { out.push(JSON.parse(localStorage.getItem(k))); } catch (e) {}
+        }
+      }
+      out.sort(function (a, b) { return b.date.localeCompare(a.date); });
+      return out.slice(0, limit);
+    },
+    watchRecent(limit, cb) {
+      if (this.mode === "db") {
+        return this.db.collection("entries").orderBy("date", "desc").limit(limit).onSnapshot(
+          function (qs) { cb(qs.docs.map(function (d) { return d.data(); })); },
+          function () {}
+        );
+      }
+      this.listRecent(limit).then(cb);
+      return function () {};
+    }
+  };
+
+  // ---------- date helpers ----------
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function toDateStr(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function fromDateStr(s) { var p = s.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  var WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+  function formatLabel(d) {
+    return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日 (" + WEEKDAYS[d.getDay()] + ")";
+  }
+  function nowTimeLabel() {
+    var d = new Date();
+    return pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  // ---------- elements ----------
+  var el = {
+    prevDay: document.getElementById("prevDay"),
+    nextDay: document.getElementById("nextDay"),
+    todayBtn: document.getElementById("todayBtn"),
+    dateLabel: document.getElementById("dateLabel"),
+    datePicker: document.getElementById("datePicker"),
+    historyToggle: document.getElementById("historyToggle"),
+    historyPanel: document.getElementById("historyPanel"),
+    historyList: document.getElementById("historyList"),
+    promptCard: document.getElementById("promptCard"),
+    promptTopic: document.getElementById("promptTopic"),
+    promptGrammar: document.getElementById("promptGrammar"),
+    promptText: document.getElementById("promptText"),
+    shufflePrompt: document.getElementById("shufflePrompt"),
+    dismissPrompt: document.getElementById("dismissPrompt"),
+    showPromptBtn: document.getElementById("showPromptBtn"),
+    kanaCommitted: document.getElementById("kanaCommitted"),
+    kanaPending: document.getElementById("kanaPending"),
+    romajiInput: document.getElementById("romajiInput"),
+    charCount: document.getElementById("charCount"),
+    saveStatus: document.getElementById("saveStatus"),
+    copyBtn: document.getElementById("copyBtn"),
+    reviewBtn: document.getElementById("reviewBtn"),
+    reviewPanel: document.getElementById("reviewPanel"),
+    reviewText: document.getElementById("reviewText"),
+    reviewNote: document.getElementById("reviewNote"),
+    stopReview: document.getElementById("stopReview")
+  };
+
+  // ---------- state ----------
+  var state = {
+    date: new Date(),
+    dateStr: "",
+    prompt: null,
+    promptDismissed: false,
+    dirty: false
+  };
+  var saveTimer = null;
+  var sampleFn = null;
+  var reviewController = null;
+
+  function render() {
+    var raw = el.romajiInput.value;
+    var r = convert(raw);
+    el.kanaCommitted.textContent = r.converted;
+    el.kanaPending.textContent = r.pending;
+    el.charCount.textContent = r.converted.length + " characters";
+    el.reviewBtn.disabled = r.converted.length === 0 && r.pending.length === 0;
+  }
+
+  function renderPrompt() {
+    var showCard = !!state.prompt && !state.promptDismissed;
+    el.promptCard.hidden = !showCard;
+    el.showPromptBtn.hidden = showCard;
+    if (!showCard) return;
+    el.promptTopic.textContent = state.prompt.topic;
+    el.promptGrammar.textContent = state.prompt.grammar;
+    el.promptText.textContent = state.prompt.en;
+  }
+
+  function buildEntryData() {
+    return {
+      date: state.dateStr,
+      romaji: el.romajiInput.value,
+      prompt: state.prompt,
+      promptDismissed: state.promptDismissed,
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  function scheduleSave() {
+    state.dirty = true;
+    el.saveStatus.textContent = "Unsaved changes";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(doSave, 1200);
+  }
+
+  async function doSave() {
+    if (!state.dirty) return;
+    var dateStr = state.dateStr;
+    el.saveStatus.textContent = "Saving…";
+    try {
+      await Storage.setEntry(dateStr, buildEntryData());
+      state.dirty = false;
+      if (dateStr === state.dateStr) el.saveStatus.textContent = "Saved " + nowTimeLabel();
+      if (Storage.mode === "local") loadHistory();
+    } catch (e) {
+      el.saveStatus.textContent = "Save failed — retrying";
+      saveTimer = setTimeout(doSave, 4000);
+    }
+  }
+
+  async function loadDate(d) {
+    if (state.dirty) await doSave();
+    state.date = d;
+    state.dateStr = toDateStr(d);
+    el.dateLabel.textContent = formatLabel(d);
+    el.datePicker.value = state.dateStr;
+    highlightHistory();
+
+    var entry = null;
+    try { entry = await Storage.getEntry(state.dateStr); } catch (e) {}
+
+    if (entry) {
+      el.romajiInput.value = entry.romaji || "";
+      state.prompt = entry.prompt || null;
+      state.promptDismissed = !!entry.promptDismissed;
+    } else {
+      el.romajiInput.value = "";
+      state.prompt = randomPrompt();
+      state.promptDismissed = false;
+    }
+    render();
+    renderPrompt();
+    el.reviewPanel.hidden = true;
+    el.reviewText.textContent = "";
+    el.saveStatus.textContent = "Ready";
+    state.dirty = false;
+  }
+
+  function highlightHistory() {
+    var items = el.historyList.querySelectorAll("li");
+    items.forEach(function (li) {
+      li.classList.toggle("active", li.dataset.date === state.dateStr);
+    });
+  }
+
+  async function loadHistory() {
+    Storage.watchRecent(60, function (entries) {
+      el.historyList.innerHTML = "";
+      if (!entries.length) {
+        var empty = document.createElement("p");
+        empty.className = "history-empty";
+        empty.textContent = "No entries yet — today is a good day to start.";
+        el.historyList.appendChild(empty);
+        return;
+      }
+      entries.forEach(function (entry) {
+        var li = document.createElement("li");
+        li.dataset.date = entry.date;
+        var d = fromDateStr(entry.date);
+        var dateSpan = document.createElement("span");
+        dateSpan.className = "h-date";
+        dateSpan.textContent = formatLabel(d);
+        var previewSpan = document.createElement("span");
+        previewSpan.className = "h-preview";
+        var kana = resolveFull(entry.romaji || "");
+        previewSpan.textContent = kana ? kana.slice(0, 24) : "(empty)";
+        li.appendChild(dateSpan);
+        li.appendChild(previewSpan);
+        li.addEventListener("click", function () {
+          loadDate(fromDateStr(entry.date));
+          el.historyPanel.classList.remove("open");
+        });
+        el.historyList.appendChild(li);
+      });
+      highlightHistory();
+    });
+  }
+
+  // ---------- Claude review ----------
+  function buildReviewPrompt(kanaText) {
+    return "You are a warm, encouraging Japanese tutor helping a beginner (JLPT N5/N4 level) who wrote a diary entry entirely in kana (no kanji), since they are practicing reading and typing kana via romaji input.\n\n" +
+      "Diary entry (in kana):\n\"\"\"\n" + kanaText + "\n\"\"\"\n\n" +
+      "Please:\n" +
+      "1. Say clearly whether the Japanese conveys a sensible idea, and restate in one English sentence what you understood.\n" +
+      "2. Point out any grammar mistakes or awkward phrasing, explained simply for an N5/N4 learner.\n" +
+      "3. Suggest 1-3 more natural phrasings, written in kana with kanji in parentheses where a natural sentence would normally use it.\n" +
+      "4. Keep the tone warm and encouraging.\n\n" +
+      "Keep the whole reply under 220 words, plain text, no markdown headers.";
+  }
+
+  var reviewErrorCopy = {
+    not_granted: "Claude review isn't enabled for this view.",
+    sampling_disabled: "Claude isn't available for this account here.",
+    not_declared: "Claude review isn't available in this view.",
+    capability_disabled: "Claude review isn't available in this view.",
+    capability_removed: "Claude review isn't available in this view.",
+    rate_limited: "Too many requests right now — try again in a bit.",
+    session_expired: "Please sign in again to use Claude review.",
+    refused: "Claude couldn't respond to this entry — try rephrasing it.",
+    empty_completion: "Claude didn't produce a response — try shortening the entry.",
+    invalid_json: "Something went wrong parsing the response. Try again.",
+    prompt_too_large: "This entry is too long for a review — try a shorter one.",
+    invalid_request: "Something went wrong sending the entry. Try again.",
+    transform_error: "Something went wrong sending the entry. Try again.",
+    queue_overflow: "Too many requests — try again shortly.",
+    upstream_error: "A temporary error occurred — try again."
+  };
+  var hideReviewCodes = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
+
+  async function runReview() {
+    if (!sampleFn) return;
+    var kanaText = resolveFull(el.romajiInput.value).trim();
+    if (!kanaText) return;
+
+    el.reviewPanel.hidden = false;
+    el.reviewNote.hidden = true;
+    el.reviewText.textContent = "Thinking…";
+    el.reviewBtn.disabled = true;
+    el.stopReview.hidden = false;
+
+    reviewController = new AbortController();
+    try {
+      var result = await sampleFn(buildReviewPrompt(kanaText), {
+        signal: reviewController.signal,
+        modelTier: "default",
+        onText: function (u) { el.reviewText.textContent = u.text; }
+      });
+      el.reviewText.textContent = result.text;
+      if (result.truncated) {
+        el.reviewNote.hidden = false;
+        el.reviewNote.textContent = "Response was cut short.";
+      }
+    } catch (e) {
+      if (e && e.code === "cancelled") {
+        el.reviewText.textContent = e.text || "";
+      } else {
+        var code = e && e.code;
+        el.reviewText.textContent = e && e.text ? e.text : "";
+        el.reviewNote.hidden = false;
+        el.reviewNote.textContent = reviewErrorCopy[code] || "Something went wrong. Try again.";
+        if (hideReviewCodes.indexOf(code) !== -1) {
+          el.reviewBtn.hidden = true;
+        }
+      }
+    } finally {
+      el.stopReview.hidden = true;
+      el.reviewBtn.disabled = false;
+      reviewController = null;
+    }
+  }
+
+  // ---------- events ----------
+  el.romajiInput.addEventListener("input", function () { render(); scheduleSave(); });
+
+  el.prevDay.addEventListener("click", function () {
+    var d = new Date(state.date); d.setDate(d.getDate() - 1); loadDate(d);
+  });
+  el.nextDay.addEventListener("click", function () {
+    var d = new Date(state.date); d.setDate(d.getDate() + 1); loadDate(d);
+  });
+  el.todayBtn.addEventListener("click", function () { loadDate(new Date()); });
+  el.datePicker.addEventListener("change", function () {
+    if (el.datePicker.value) loadDate(fromDateStr(el.datePicker.value));
+  });
+
+  el.historyToggle.addEventListener("click", function () {
+    el.historyPanel.classList.toggle("open");
+  });
+
+  el.shufflePrompt.addEventListener("click", function () {
+    state.prompt = randomPrompt(state.prompt ? state.prompt.en : null);
+    renderPrompt();
+    scheduleSave();
+  });
+  el.dismissPrompt.addEventListener("click", function () {
+    state.promptDismissed = true;
+    renderPrompt();
+    scheduleSave();
+  });
+  el.showPromptBtn.addEventListener("click", function () {
+    state.promptDismissed = false;
+    if (!state.prompt) state.prompt = randomPrompt();
+    renderPrompt();
+    scheduleSave();
+  });
+
+  el.copyBtn.addEventListener("click", async function () {
+    var text = resolveFull(el.romajiInput.value);
+    try {
+      await navigator.clipboard.writeText(text);
+      var original = el.copyBtn.textContent;
+      el.copyBtn.textContent = "Copied!";
+      setTimeout(function () { el.copyBtn.textContent = original; }, 1500);
+    } catch (e) {}
+  });
+
+  el.reviewBtn.addEventListener("click", runReview);
+  el.stopReview.addEventListener("click", function () {
+    if (reviewController) reviewController.abort();
+  });
+
+  window.addEventListener("beforeunload", function () {
+    if (state.dirty) { try { doSave(); } catch (e) {} }
+  });
+
+  // ---------- init ----------
+  (async function init() {
+    await Storage.init();
+    if (typeof window.claude !== "undefined" && window.claude && window.claude.use) {
+      try { sampleFn = await window.claude.use("sample"); } catch (e) { sampleFn = null; }
+    }
+    if (!sampleFn) {
+      el.reviewBtn.hidden = true;
+    }
+    loadHistory();
+    await loadDate(new Date());
+  })();
+})();
+</script>
