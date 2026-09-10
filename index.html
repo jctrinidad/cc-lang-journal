@@ -365,7 +365,22 @@
         var upperN = /[A-Z]/.test(c0);
         if (c1 === "'") { out += upperN ? "ン" : "ん"; i += 2; continue; }
         var c1l = c1.toLowerCase();
-        if (c1l === "n") { out += upperN ? "ン" : "ん"; i += 1; continue; }
+        if (c1l === "n") {
+          // "nn": stays pending until we know what follows. A vowel/y makes
+          // the second n start a new mora (konna -> こんな); anything else
+          // already typed collapses the pair to a single ん (nn! -> ん！).
+          var c2 = rem[2];
+          if (c2 === undefined) break;
+          var c2l = c2.toLowerCase();
+          if ("aiueoy".indexOf(c2l) !== -1) {
+            out += /[A-Z]/.test(c0) ? "ン" : "ん";
+            i += 1;
+          } else {
+            out += (upperN || /[A-Z]/.test(c1)) ? "ン" : "ん";
+            i += 2;
+          }
+          continue;
+        }
         if ("aiueoy".indexOf(c1l) !== -1) {
           if (n - i <= 3) break;
           out += upperN ? "ン" : "ん";
@@ -392,13 +407,19 @@
     return { converted: out, pending: buf.slice(i) };
   }
 
+  // Resolves a leftover pending fragment once no more romaji is coming
+  // (one or more bare "n"s always mean ん; anything else is left as-is).
+  function resolvePendingFragment(pending) {
+    if (/^n+$/i.test(pending)) {
+      return /[A-Z]/.test(pending) ? "ン" : "ん";
+    }
+    return pending;
+  }
+
   function resolveFull(text) {
     var r = convert(text);
     if (!r.pending) return r.converted;
-    if (r.pending.toLowerCase() === "n") {
-      return r.converted + (/[A-Z]/.test(r.pending) ? "ン" : "ん");
-    }
-    return r.converted + r.pending;
+    return r.converted + resolvePendingFragment(r.pending);
   }
 
   // ---------- writing prompts (N5/N4) ----------
@@ -567,6 +588,7 @@
     dirty: false
   };
   var saveTimer = null;
+  var pendingCommitTimer = null;
   var sampleFn = null;
   var reviewController = null;
   var composing = false;
@@ -594,6 +616,28 @@
     }
     autosize();
     updateDerived();
+    clearTimeout(pendingCommitTimer);
+    if (r.pending) pendingCommitTimer = setTimeout(commitPendingFragment, 500);
+  }
+
+  // If a fragment like a lone "n" or "nn" is still sitting unresolved at
+  // the caret after a short pause (nothing more is coming to disambiguate
+  // it), settle it now instead of leaving raw romaji stuck in the entry.
+  function commitPendingFragment() {
+    var ta = el.editor;
+    var pos = ta.selectionStart;
+    var value = ta.value;
+    var before = value.slice(0, pos);
+    var after = value.slice(pos);
+    var r = convert(before);
+    if (!r.pending) return;
+    var resolved = resolvePendingFragment(r.pending);
+    ta.value = r.converted + resolved + after;
+    var newPos = r.converted.length + resolved.length;
+    ta.setSelectionRange(newPos, newPos);
+    autosize();
+    updateDerived();
+    scheduleSave();
   }
 
   function updateDerived() {
@@ -797,6 +841,10 @@
     if (composing) return;
     reconvertAroundCursor();
     scheduleSave();
+  });
+  el.editor.addEventListener("blur", function () {
+    clearTimeout(pendingCommitTimer);
+    commitPendingFragment();
   });
 
   el.prevDay.addEventListener("click", function () {
