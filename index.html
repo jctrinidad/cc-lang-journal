@@ -165,6 +165,7 @@
   .review-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
   .review-header h2 { font-size: 1.05rem; color: var(--indigo); }
   .review-text { white-space: pre-wrap; line-height: 1.6; font-size: 0.92rem; color: var(--ink); }
+  .review-text strong { color: var(--vermillion); font-weight: 700; }
   .review-note { font-size: 0.8rem; color: var(--ink-faint); margin-top: 8px; }
 
   .history {
@@ -759,14 +760,20 @@
 
   // ---------- Claude review ----------
   function buildReviewPrompt(kanaText) {
-    return "You are a warm, encouraging Japanese tutor helping a beginner (JLPT N5/N4 level) who wrote a diary entry entirely in kana (no kanji), since they are practicing reading and typing kana via romaji input.\n\n" +
-      "Diary entry (in kana):\n\"\"\"\n" + kanaText + "\n\"\"\"\n\n" +
-      "Please:\n" +
-      "1. Say clearly whether the Japanese conveys a sensible idea, and restate in one English sentence what you understood.\n" +
-      "2. Point out any grammar mistakes or awkward phrasing, explained simply for an N5/N4 learner.\n" +
-      "3. Suggest 1-3 more natural phrasings, written in kana with kanji in parentheses where a natural sentence would normally use it.\n" +
-      "4. Keep the tone warm and encouraging.\n\n" +
-      "Keep the whole reply under 220 words, plain text, no markdown headers.";
+    return "Review this N5/N4-level Japanese diary entry, written in kana (no kanji) because the writer is practicing kana input.\n\n" +
+      "Entry:\n\"\"\"\n" + kanaText + "\n\"\"\"\n\n" +
+      "No preamble, no restating what the entry means, no encouragement — just the two sections below. Skip a section entirely if it doesn't apply.\n\n" +
+      "Fixes:\n" +
+      "Each grammar/usage mistake as a corrected full sentence, with only the changed part wrapped in **double asterisks**. If there are none, write \"No corrections.\"\n\n" +
+      "More natural:\n" +
+      "1-2 rephrasings a native speaker would more naturally use, same sentence with only the changed part in **double asterisks**. Omit this section if the entry is already natural.\n\n" +
+      "Kanji in parentheses after a kana word is fine where natural. Plain text, under 130 words, no headers other than the two labels above.";
+  }
+
+  // Escapes HTML then turns **bold** markers into <strong> for display.
+  function renderReviewMarkup(text) {
+    var escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   }
 
   var reviewErrorCopy = {
@@ -804,19 +811,19 @@
       var result = await sampleFn(buildReviewPrompt(kanaText), {
         signal: reviewController.signal,
         modelTier: "quick",
-        onText: function (u) { el.reviewText.textContent = u.text; }
+        onText: function (u) { el.reviewText.innerHTML = renderReviewMarkup(u.text); }
       });
-      el.reviewText.textContent = result.text;
+      el.reviewText.innerHTML = renderReviewMarkup(result.text);
       if (result.truncated) {
         el.reviewNote.hidden = false;
         el.reviewNote.textContent = "Response was cut short.";
       }
     } catch (e) {
       if (e && e.code === "cancelled") {
-        el.reviewText.textContent = e.text || "";
+        el.reviewText.innerHTML = renderReviewMarkup(e.text || "");
       } else {
         var code = e && e.code;
-        el.reviewText.textContent = e && e.text ? e.text : "";
+        el.reviewText.innerHTML = renderReviewMarkup(e && e.text ? e.text : "");
         el.reviewNote.hidden = false;
         el.reviewNote.textContent = reviewErrorCopy[code] || "Something went wrong. Try again.";
         if (hideReviewCodes.indexOf(code) !== -1) {
