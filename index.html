@@ -803,7 +803,7 @@
     try {
       var result = await sampleFn(buildReviewPrompt(kanaText), {
         signal: reviewController.signal,
-        modelTier: "default",
+        modelTier: "quick",
         onText: function (u) { el.reviewText.textContent = u.text; }
       });
       el.reviewText.textContent = result.text;
