@@ -127,31 +127,21 @@
 
   .paper {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    box-shadow: var(--shadow); padding: 22px 20px; min-height: 180px;
+    box-shadow: var(--shadow); padding: 22px 20px;
     background-image:
       linear-gradient(var(--paper-line) 1px, transparent 1px),
       linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
     background-size: 30px 30px;
     background-position: -1px -1px;
   }
-  .kana-display {
-    font-size: 1.4rem; line-height: 2.05rem; white-space: pre-wrap; word-break: break-word;
-    min-height: 2.05rem;
+  #editor {
+    display: block; width: 100%; min-height: 92px; resize: none; overflow: hidden;
+    border: none; outline: none; background: transparent; color: var(--ink);
+    font-family: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-size: 1.4rem; line-height: 2.05rem; white-space: pre-wrap;
   }
-  #kanaCommitted { color: var(--ink); }
-  #kanaPending {
-    color: var(--ink-faint); font-family: "IBM Plex Mono", monospace; font-size: 1.05rem;
-    border-bottom: 1px dashed var(--ink-faint);
-  }
-  .input-row { display: flex; flex-direction: column; gap: 4px; }
-  .input-label { font-size: 0.78rem; color: var(--ink-soft); display: flex; gap: 6px; align-items: baseline; }
-  .input-label .hint { color: var(--ink-faint); }
-  #romajiInput {
-    font-family: "IBM Plex Mono", monospace; font-size: 0.95rem; color: var(--ink-soft);
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-    padding: 10px 12px; resize: vertical; min-height: 52px; width: 100%;
-  }
-  #romajiInput:focus { outline: 2px solid var(--indigo); outline-offset: 1px; }
+  #editor::placeholder { color: var(--ink-faint); font-size: 1.05rem; }
+  .paper-hint { font-size: 0.78rem; color: var(--ink-faint); margin-top: 4px; }
 
   details.help { font-size: 0.8rem; color: var(--ink-soft); }
   details.help summary { cursor: pointer; color: var(--indigo); }
@@ -240,16 +230,10 @@
       </section>
       <button class="text-btn" id="showPromptBtn" type="button" hidden>Show a writing prompt</button>
 
-      <section class="paper" aria-label="Japanese entry preview">
-        <div class="kana-display" id="kanaDisplay">
-          <span id="kanaCommitted"></span><span id="kanaPending"></span>
-        </div>
+      <section class="paper" aria-label="Japanese entry">
+        <textarea id="editor" rows="1" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Type romaji here — e.g. kyou wa ii tenki desu ne"></textarea>
       </section>
-
-      <div class="input-row">
-        <label class="input-label" for="romajiInput">Romaji <span class="hint">— keep Shift held down for a whole word to get katakana (e.g. Shift+RAAMEN → ラアメン)</span></label>
-        <textarea id="romajiInput" rows="3" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="kyou wa ii tenki desu ne"></textarea>
-      </div>
+      <p class="paper-hint">Type romaji and it converts to kana as you go. Keep Shift held down for a whole word (so it comes out ALL CAPS) to get katakana, e.g. Shift+RAAMEN → ラアメン.</p>
 
       <details class="help">
         <summary>How the kana conversion works</summary>
@@ -563,9 +547,7 @@
     shufflePrompt: document.getElementById("shufflePrompt"),
     dismissPrompt: document.getElementById("dismissPrompt"),
     showPromptBtn: document.getElementById("showPromptBtn"),
-    kanaCommitted: document.getElementById("kanaCommitted"),
-    kanaPending: document.getElementById("kanaPending"),
-    romajiInput: document.getElementById("romajiInput"),
+    editor: document.getElementById("editor"),
     charCount: document.getElementById("charCount"),
     saveStatus: document.getElementById("saveStatus"),
     copyBtn: document.getElementById("copyBtn"),
@@ -587,14 +569,37 @@
   var saveTimer = null;
   var sampleFn = null;
   var reviewController = null;
+  var composing = false;
 
-  function render() {
-    var raw = el.romajiInput.value;
-    var r = convert(raw);
-    el.kanaCommitted.textContent = r.converted;
-    el.kanaPending.textContent = r.pending;
-    el.charCount.textContent = r.converted.length + " characters";
-    el.reviewBtn.disabled = r.converted.length === 0 && r.pending.length === 0;
+  function autosize() {
+    el.editor.style.height = "auto";
+    el.editor.style.height = el.editor.scrollHeight + "px";
+  }
+
+  // Re-converts the romaji just before the caret into kana, leaving
+  // everything after the caret untouched. Runs on every input event so
+  // typing directly into the paper turns into kana as you go.
+  function reconvertAroundCursor() {
+    var ta = el.editor;
+    var pos = ta.selectionStart;
+    var value = ta.value;
+    var before = value.slice(0, pos);
+    var after = value.slice(pos);
+    var r = convert(before);
+    var newValue = r.converted + r.pending + after;
+    var newPos = r.converted.length + r.pending.length;
+    if (newValue !== value) {
+      ta.value = newValue;
+      ta.setSelectionRange(newPos, newPos);
+    }
+    autosize();
+    updateDerived();
+  }
+
+  function updateDerived() {
+    var text = el.editor.value;
+    el.charCount.textContent = text.length + " characters";
+    el.reviewBtn.disabled = resolveFull(text).trim().length === 0;
   }
 
   function renderPrompt() {
@@ -610,7 +615,7 @@
   function buildEntryData() {
     return {
       date: state.dateStr,
-      romaji: el.romajiInput.value,
+      kana: el.editor.value,
       prompt: state.prompt,
       promptDismissed: state.promptDismissed,
       updatedAt: new Date().toISOString()
@@ -651,15 +656,16 @@
     try { entry = await Storage.getEntry(state.dateStr); } catch (e) {}
 
     if (entry) {
-      el.romajiInput.value = entry.romaji || "";
+      el.editor.value = "kana" in entry ? entry.kana : resolveFull(entry.romaji || "");
       state.prompt = entry.prompt || null;
       state.promptDismissed = !!entry.promptDismissed;
     } else {
-      el.romajiInput.value = "";
+      el.editor.value = "";
       state.prompt = randomPrompt();
       state.promptDismissed = false;
     }
-    render();
+    autosize();
+    updateDerived();
     renderPrompt();
     el.reviewPanel.hidden = true;
     el.reviewText.textContent = "";
@@ -693,7 +699,7 @@
         dateSpan.textContent = formatLabel(d);
         var previewSpan = document.createElement("span");
         previewSpan.className = "h-preview";
-        var kana = resolveFull(entry.romaji || "");
+        var kana = resolveFull(entry.kana || "");
         previewSpan.textContent = kana ? kana.slice(0, 24) : "(empty)";
         li.appendChild(dateSpan);
         li.appendChild(previewSpan);
@@ -740,7 +746,7 @@
 
   async function runReview() {
     if (!sampleFn) return;
-    var kanaText = resolveFull(el.romajiInput.value).trim();
+    var kanaText = resolveFull(el.editor.value).trim();
     if (!kanaText) return;
 
     el.reviewPanel.hidden = false;
@@ -781,7 +787,17 @@
   }
 
   // ---------- events ----------
-  el.romajiInput.addEventListener("input", function () { render(); scheduleSave(); });
+  el.editor.addEventListener("compositionstart", function () { composing = true; });
+  el.editor.addEventListener("compositionend", function () {
+    composing = false;
+    reconvertAroundCursor();
+    scheduleSave();
+  });
+  el.editor.addEventListener("input", function () {
+    if (composing) return;
+    reconvertAroundCursor();
+    scheduleSave();
+  });
 
   el.prevDay.addEventListener("click", function () {
     var d = new Date(state.date); d.setDate(d.getDate() - 1); loadDate(d);
@@ -816,7 +832,7 @@
   });
 
   el.copyBtn.addEventListener("click", async function () {
-    var text = resolveFull(el.romajiInput.value);
+    var text = resolveFull(el.editor.value);
     try {
       await navigator.clipboard.writeText(text);
       var original = el.copyBtn.textContent;
